@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dori Desktop Chat</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="dori-shell idle" id="doriShell" aria-label="도리 데스크탑 챗">
+      <button class="head-close" id="closeButton" type="button" title="닫기">×</button>
+
+      <section class="floating-ui" aria-label="도리 메뉴">
+        <div class="top-row">
+          <button class="icon-button drag-handle" type="button" title="창 이동">↕</button>
+          <button class="icon-button" id="minimizeButton" type="button" title="최소화">−</button>
+          <button class="icon-button" id="pinButton" type="button" title="하단으로 정렬">⌄</button>
+        </div>
+
+        <div class="mode-actions" aria-label="도리 상태">
+          <button type="button" data-mode="coding">코딩하기</button>
+          <button type="button" data-mode="break">쉬는시간</button>
+          <button type="button" data-mode="lunch">점심시간</button>
+          <button type="button" data-mode="work">일하기</button>
+        </div>
+
+        <div class="speech-bubble" id="speechBubble">
+          <div class="chat-log" id="chatLog" aria-live="polite">
+            <div class="message assistant">도리에게 물어보세요</div>
+          </div>
+          <form class="ask-form" id="askForm">
+            <input
+              id="askInput"
+              type="text"
+              autocomplete="off"
+              placeholder="질문을 입력하고 Enter"
+              aria-label="도리에게 질문"
+            />
+            <button id="askButton" type="submit">전송</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="dori-stage" aria-label="도리">
+        <div class="shadow"></div>
+        <div class="timer-label" id="timerLabel" aria-live="polite"></div>
+        <button class="mascot working" id="mascotButton" type="button" title="도리 열기">
+          <img id="doriImage" src="./assets/dog-coder.png" alt="노트북으로 코딩하는 도리" />
+          <span class="typing-dot dot-one"></span>
+          <span class="typing-dot dot-two"></span>
+          <span class="typing-dot dot-three"></span>
+        </button>
+        <div class="stage-label" id="stageLabel">도리</div>
+      </section>
+
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

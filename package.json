@@ -1,0 +1,32 @@
+{
+  "name": "desktop-app",
+  "version": "1.0.0",
+  "description": "A cute always-on-top desktop companion app.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^21.2.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.desktop.app",
+    "productName": "Desktop App",
+    "icon": "build/icon.ico",
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "resources"
+      },
+      {
+        "from": "config.json",
+        "to": "config.json"
+      }
+    ],
+    "win": {
+      "target": "portable"
+    }
+  }
+}
