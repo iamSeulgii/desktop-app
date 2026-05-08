@@ -1,5 +1,5 @@
-const { app, BrowserWindow, ipcMain, screen } = require("electron");
-const { spawn } = require("child_process");
+const { app, BrowserWindow, ipcMain, screen, shell } = require("electron");
+const https = require("https");
 const fs = require("fs");
 const path = require("path");
 
@@ -12,9 +12,16 @@ const EXPANDED_HEIGHT = 380;
 const BOTTOM_MARGIN = 18;
 const RIGHT_MARGIN = 18;
 
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const ALLOWED_MODELS = new Set([
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite"
+]);
+
 function loadConfig() {
   const defaults = {
-    modelFile: "dori.gguf",
     maxTokens: 512,
     temperature: 0.7,
     systemPrompt:
@@ -35,10 +42,50 @@ const config = loadConfig();
 let mainWindow;
 let currentView = "idle";
 let hasManualPosition = false;
-const chatMessages = [{ role: "system", content: config.systemPrompt }];
+const chatHistory = [];
+
+function getSettingsPath() {
+  return path.join(app.getPath("userData"), "settings.json");
+}
+
+function loadSettings() {
+  try {
+    const raw = fs.readFileSync(getSettingsPath(), "utf8");
+    const parsed = JSON.parse(raw);
+    const apiKey = typeof parsed.geminiApiKey === "string" ? parsed.geminiApiKey : "";
+    const model =
+      typeof parsed.geminiModel === "string" && ALLOWED_MODELS.has(parsed.geminiModel)
+        ? parsed.geminiModel
+        : DEFAULT_GEMINI_MODEL;
+    return { geminiApiKey: apiKey, geminiModel: model };
+  } catch {
+    return { geminiApiKey: "", geminiModel: DEFAULT_GEMINI_MODEL };
+  }
+}
+
+function saveSettingsToDisk(patch) {
+  const current = loadSettings();
+  const next = { ...current };
+
+  if (patch && typeof patch === "object") {
+    if (typeof patch.geminiApiKey === "string") {
+      next.geminiApiKey = patch.geminiApiKey.trim();
+    }
+    if (typeof patch.geminiModel === "string" && ALLOWED_MODELS.has(patch.geminiModel)) {
+      next.geminiModel = patch.geminiModel;
+    }
+  }
+
+  const filepath = getSettingsPath();
+  fs.mkdirSync(path.dirname(filepath), { recursive: true });
+  fs.writeFileSync(filepath, JSON.stringify(next, null, 2), "utf8");
+  return next;
+}
 
 function getWindowSize(view = currentView) {
-  if (view === "chat") return { width: EXPANDED_WIDTH, height: EXPANDED_HEIGHT };
+  if (view === "chat" || view === "settings") {
+    return { width: EXPANDED_WIDTH, height: EXPANDED_HEIGHT };
+  }
   if (view === "menu") return { width: MENU_WIDTH, height: MENU_HEIGHT };
   return { width: IDLE_WIDTH, height: IDLE_HEIGHT };
 }
@@ -158,127 +205,133 @@ ipcMain.on("window:set-expanded", (_event, expanded) => {
 
 ipcMain.on("window:set-view", (_event, view) => {
   if (!mainWindow) return;
-  const nextView = ["idle", "menu", "chat"].includes(view) ? view : "idle";
+  const nextView = ["idle", "menu", "chat", "settings"].includes(view) ? view : "idle";
   setViewBounds(nextView, true);
 });
 
-function getResourceRoot() {
-  return app.isPackaged ? process.resourcesPath : __dirname;
-}
+ipcMain.handle("settings:get", () => loadSettings());
 
-function getLlamaBinaryPath() {
-  const binaryName = process.platform === "win32" ? "llama-cli.exe" : "llama-cli";
-  const platformDir = process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux";
-  return path.join(getResourceRoot(), "resources", "llama", platformDir, binaryName);
-}
+ipcMain.handle("settings:save", (_event, payload) => saveSettingsToDisk(payload));
 
-function getModelPath() {
-  const modelFile = process.env.DORI_MODEL || config.modelFile;
-  if (path.isAbsolute(modelFile)) return modelFile;
-  return path.join(getResourceRoot(), "resources", "models", modelFile);
-}
+ipcMain.on("shell:open-external", (_event, url) => {
+  if (typeof url !== "string") return;
+  if (!/^https:\/\//i.test(url)) return;
+  shell.openExternal(url);
+});
 
-function buildPrompt(userPrompt) {
-  const history = chatMessages
-    .slice(1)
-    .map((message) => `${message.role === "user" ? "사용자" : "도리"}: ${message.content}`)
-    .join("\n");
+function buildGeminiContents(prompt) {
+  const history = chatHistory.map((entry) => ({
+    role: entry.role === "assistant" ? "model" : "user",
+    parts: [{ text: entry.content }]
+  }));
 
-  return [
-    config.systemPrompt,
-    history ? `이전 대화:\n${history}` : "",
-    `사용자: ${userPrompt}`,
-    "도리:"
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  return [...history, { role: "user", parts: [{ text: prompt }] }];
 }
 
 function rememberExchange(prompt, answer) {
   if (!answer) return;
 
-  chatMessages.push({ role: "user", content: prompt }, { role: "assistant", content: answer });
-  if (chatMessages.length > 17) {
-    chatMessages.splice(1, chatMessages.length - 17);
+  chatHistory.push({ role: "user", content: prompt }, { role: "assistant", content: answer });
+  if (chatHistory.length > 16) {
+    chatHistory.splice(0, chatHistory.length - 16);
   }
 }
 
-function createLocalResponse(prompt, requestId, webContents) {
+function callGemini({ apiKey, model, contents, systemInstruction, generationConfig }) {
   return new Promise((resolve, reject) => {
-    let settled = false;
-    let finalText = "";
-    const binaryPath = getLlamaBinaryPath();
-    const modelPath = getModelPath();
-
-    function fail(error) {
-      if (settled) return;
-      settled = true;
-      webContents.send("chat:error", { requestId, message: error.message });
-      reject(error);
-    }
-
-    function finish() {
-      if (settled) return;
-      settled = true;
-      const answer = finalText.trim();
-      rememberExchange(prompt, answer);
-      webContents.send("chat:done", { requestId, text: answer });
-      resolve(answer);
-    }
-
-    if (!fs.existsSync(binaryPath)) {
-      fail(new Error(`내장 LLM 실행파일을 찾을 수 없습니다: ${binaryPath}`));
-      return;
-    }
-
-    if (!fs.existsSync(modelPath)) {
-      fail(new Error(`내장 모델 파일을 찾을 수 없습니다: ${modelPath}`));
-      return;
-    }
-
-    const args = [
-      "-m",
-      modelPath,
-      "-p",
-      buildPrompt(prompt),
-      "-n",
-      String(config.maxTokens || 512),
-      "--temp",
-      String(config.temperature ?? 0.7),
-      "--no-display-prompt",
-      "--simple-io"
-    ];
-
-    const child = spawn(binaryPath, args, {
-      windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"]
+    const body = JSON.stringify({
+      contents,
+      ...(systemInstruction ? { systemInstruction } : {}),
+      ...(generationConfig ? { generationConfig } : {})
     });
 
-    child.stdout.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => {
-      if (!chunk || settled) return;
-      finalText += chunk;
-      webContents.send("chat:chunk", { requestId, chunk });
-    });
+    const req = https.request(
+      {
+        method: "POST",
+        hostname: "generativelanguage.googleapis.com",
+        path: `/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(
+          apiKey
+        )}`,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body)
+        }
+      },
+      (res) => {
+        let data = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => {
+          if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+            let detail = `HTTP ${res.statusCode || "?"}`;
+            try {
+              const errJson = JSON.parse(data);
+              if (errJson?.error?.message) detail = errJson.error.message;
+            } catch (_error) {
+              /* keep default */
+            }
+            reject(new Error(`Gemini API 오류: ${detail}`));
+            return;
+          }
 
-    child.stderr.setEncoding("utf8");
-    child.stderr.on("data", (chunk) => {
-      if (process.env.DORI_DEBUG_LLM) console.error(chunk);
-    });
+          try {
+            const json = JSON.parse(data);
+            const candidate = json?.candidates?.[0];
+            const finishReason = candidate?.finishReason;
+            const parts = candidate?.content?.parts || [];
+            const text = parts.map((part) => part?.text || "").join("");
 
-    child.on("error", () => {
-      fail(new Error("내장 LLM을 실행하지 못했습니다."));
-    });
+            if (!text && finishReason && finishReason !== "STOP") {
+              reject(new Error(`응답이 차단되었어요 (${finishReason}).`));
+              return;
+            }
 
-    child.on("close", (code) => {
-      if (settled) return;
-      if (code !== 0 && !finalText.trim()) {
-        fail(new Error(`내장 LLM 실행이 실패했습니다. 종료 코드: ${code}`));
-        return;
+            resolve(text);
+          } catch (_error) {
+            reject(new Error("Gemini API 응답을 파싱하지 못했어요."));
+          }
+        });
       }
-      finish();
-    });
+    );
+
+    req.on("error", (err) => reject(new Error(`Gemini API 요청 실패: ${err.message}`)));
+    req.write(body);
+    req.end();
   });
+}
+
+async function createGeminiResponse(prompt, requestId, webContents) {
+  const settings = loadSettings();
+  if (!settings.geminiApiKey) {
+    const message = "Gemini API 키가 없어요. 설정(⚙)에서 키를 입력해주세요.";
+    webContents.send("chat:error", { requestId, message });
+    throw new Error(message);
+  }
+
+  try {
+    const text = await callGemini({
+      apiKey: settings.geminiApiKey,
+      model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
+      contents: buildGeminiContents(prompt),
+      systemInstruction: config.systemPrompt
+        ? { parts: [{ text: config.systemPrompt }] }
+        : undefined,
+      generationConfig: {
+        temperature: typeof config.temperature === "number" ? config.temperature : 0.7,
+        maxOutputTokens: config.maxTokens || 512
+      }
+    });
+
+    const answer = (text || "").trim();
+    rememberExchange(prompt, answer);
+    webContents.send("chat:done", { requestId, text: answer });
+    return answer;
+  } catch (error) {
+    webContents.send("chat:error", { requestId, message: error.message });
+    throw error;
+  }
 }
 
 ipcMain.handle("chat:ask", async (event, payload) => {
@@ -290,7 +343,7 @@ ipcMain.handle("chat:ask", async (event, payload) => {
   }
 
   try {
-    return await createLocalResponse(trimmed, requestId, event.sender);
+    return await createGeminiResponse(trimmed, requestId, event.sender);
   } catch (_error) {
     return "";
   }

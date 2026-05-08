@@ -1,27 +1,5 @@
-# Bundled LLM Resources
+# Bundled Resources
 
-Place the llama.cpp CLI binary and GGUF model here before building.
+이 폴더는 더 이상 LLM 바이너리/모델을 번들링할 필요가 없어요 — 채팅은 Gemini API 를 호출하는 방식으로 바뀌었습니다.
 
-Required for Windows portable builds:
-
-```text
-resources/llama/win32/llama-cli.exe
-resources/models/dori.gguf
-```
-
-Required for macOS builds:
-
-```text
-resources/llama/darwin/llama-cli
-resources/models/dori.gguf
-```
-
-Make sure the `llama-cli` binary is executable (`chmod +x resources/llama/darwin/llama-cli`) and matches the architecture you are building for (arm64 for Apple Silicon, x64 for Intel).
-
-Optional for local Linux development:
-
-```text
-resources/llama/linux/llama-cli
-```
-
-The app calls `llama-cli` directly and streams stdout into the chat UI.
+향후 기본 자산(아이콘, 효과음 등)을 패키지에 포함하고 싶을 때 이 폴더에 두면 빌드된 앱의 `resources/` 경로(`process.resourcesPath`)에 함께 복사됩니다.

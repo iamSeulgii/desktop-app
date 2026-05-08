@@ -10,9 +10,20 @@ const modeButtons = [...document.querySelectorAll(".mode-actions button")];
 const minimizeButton = document.querySelector("#minimizeButton");
 const closeButton = document.querySelector("#closeButton");
 const pinButton = document.querySelector("#pinButton");
+const settingsButton = document.querySelector("#settingsButton");
+const settingsForm = document.querySelector("#settingsForm");
+const settingsApiKeyInput = document.querySelector("#settingsApiKey");
+const settingsModelSelect = document.querySelector("#settingsModel");
+const settingsCancelButton = document.querySelector("#settingsCancel");
+const settingsStatus = document.querySelector("#settingsStatus");
+const apiKeyLinkButton = document.querySelector("#apiKeyLink");
 const mascotButton = document.querySelector("#mascotButton");
 const mascot = document.querySelector(".mascot");
 const doriImage = document.querySelector("#doriImage");
+
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+let cachedSettings = { geminiApiKey: "", geminiModel: DEFAULT_GEMINI_MODEL };
+let settingsStatusTimer = null;
 
 let view = "idle";
 let activeMode = null;
@@ -35,10 +46,11 @@ const modeImages = {
 };
 
 function setView(nextView, focusInput = false) {
-  view = ["idle", "menu", "chat"].includes(nextView) ? nextView : "idle";
+  view = ["idle", "menu", "chat", "settings"].includes(nextView) ? nextView : "idle";
   doriShell.classList.toggle("idle", view === "idle");
   doriShell.classList.toggle("menu", view === "menu");
   doriShell.classList.toggle("chat", view === "chat");
+  doriShell.classList.toggle("settings", view === "settings");
   window.desktopTimer.setView(view);
 
   if (view === "chat" && focusInput) {
@@ -114,7 +126,7 @@ window.desktopTimer.onChatError(({ requestId, message: errorMessage }) => {
   if (!message) return;
 
   message.className = "message assistant error";
-  message.textContent = errorMessage || "Ollama가 실행중인지 확인해주세요";
+  message.textContent = errorMessage || "Gemini 호출에 실패했어요. API 키와 인터넷 연결을 확인해주세요.";
   pendingMessages.delete(requestId);
 });
 
@@ -156,7 +168,8 @@ askForm.addEventListener("submit", async (event) => {
   } catch (error) {
     if (pendingMessages.has(requestId)) {
       pending.className = "message assistant error";
-      pending.textContent = error.message || "Ollama가 실행중인지 확인해주세요";
+      pending.textContent =
+        error.message || "Gemini 호출에 실패했어요. API 키와 인터넷 연결을 확인해주세요.";
       pendingMessages.delete(requestId);
     }
   } finally {
@@ -256,5 +269,83 @@ pinButton.addEventListener("click", () => {
   window.desktopTimer.pinBottom();
 });
 
+function showSettingsStatus(text, isError = false) {
+  if (!settingsStatus) return;
+  settingsStatus.textContent = text;
+  settingsStatus.classList.toggle("error", Boolean(isError));
+  if (settingsStatusTimer) clearTimeout(settingsStatusTimer);
+  if (text) {
+    settingsStatusTimer = setTimeout(() => {
+      settingsStatus.textContent = "";
+      settingsStatus.classList.remove("error");
+    }, 1800);
+  }
+}
+
+async function refreshSettings() {
+  try {
+    const next = await window.desktopTimer.getSettings();
+    if (next && typeof next === "object") {
+      cachedSettings = {
+        geminiApiKey: typeof next.geminiApiKey === "string" ? next.geminiApiKey : "",
+        geminiModel:
+          typeof next.geminiModel === "string" && next.geminiModel
+            ? next.geminiModel
+            : DEFAULT_GEMINI_MODEL
+      };
+    }
+  } catch (_error) {
+    /* keep defaults */
+  }
+}
+
+function openSettings() {
+  settingsApiKeyInput.value = cachedSettings.geminiApiKey || "";
+  settingsModelSelect.value = cachedSettings.geminiModel || DEFAULT_GEMINI_MODEL;
+  if (![...settingsModelSelect.options].some((opt) => opt.value === settingsModelSelect.value)) {
+    settingsModelSelect.value = DEFAULT_GEMINI_MODEL;
+  }
+  showSettingsStatus("");
+  setView("settings", false);
+  requestAnimationFrame(() => settingsApiKeyInput.focus());
+}
+
+function closeSettings() {
+  showSettingsStatus("");
+  setView("idle", false);
+}
+
+settingsButton.addEventListener("click", openSettings);
+settingsCancelButton.addEventListener("click", closeSettings);
+
+settingsForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const payload = {
+    geminiApiKey: settingsApiKeyInput.value.trim(),
+    geminiModel: settingsModelSelect.value || DEFAULT_GEMINI_MODEL
+  };
+
+  try {
+    const saved = await window.desktopTimer.saveSettings(payload);
+    cachedSettings = {
+      geminiApiKey:
+        saved && typeof saved.geminiApiKey === "string" ? saved.geminiApiKey : payload.geminiApiKey,
+      geminiModel:
+        saved && typeof saved.geminiModel === "string" && saved.geminiModel
+          ? saved.geminiModel
+          : payload.geminiModel
+    };
+    showSettingsStatus("저장됐어요!");
+  } catch (error) {
+    showSettingsStatus(error?.message || "저장에 실패했어요.", true);
+  }
+});
+
+apiKeyLinkButton.addEventListener("click", () => {
+  window.desktopTimer.openExternal("https://aistudio.google.com/app/apikey");
+});
+
 renderDefaultLabel();
 setView("idle", false);
+refreshSettings();
