@@ -5,7 +5,11 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win portable"
+    "build": "electron-builder --win portable",
+    "build:win": "electron-builder --win portable",
+    "build:mac": "electron-builder --mac",
+    "build:mac:arm64": "electron-builder --mac --arm64",
+    "build:mac:x64": "electron-builder --mac --x64"
   },
   "devDependencies": {
     "electron": "^21.2.1",
@@ -14,7 +18,6 @@
   "build": {
     "appId": "com.desktop.app",
     "productName": "Desktop App",
-    "icon": "build/icon.ico",
     "extraResources": [
       {
         "from": "resources",
@@ -26,7 +29,28 @@
       }
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": "portable"
+    },
+    "mac": {
+      "icon": "build/icon-mac.png",
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null
+    },
+    "dmg": {
+      "writeUpdateInfo": false
     }
   }
 }
