@@ -9,10 +9,18 @@ resources/llama/win32/llama-cli.exe
 resources/models/dori.gguf
 ```
 
-Optional for local macOS/Linux development:
+Required for macOS builds:
 
 ```text
 resources/llama/darwin/llama-cli
+resources/models/dori.gguf
+```
+
+Make sure the `llama-cli` binary is executable (`chmod +x resources/llama/darwin/llama-cli`) and matches the architecture you are building for (arm64 for Apple Silicon, x64 for Intel).
+
+Optional for local Linux development:
+
+```text
 resources/llama/linux/llama-cli
 ```
 

@@ -118,6 +118,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.hide();
+  }
+
   createWindow();
 
   app.on("activate", () => {
