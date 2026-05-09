@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, shell } = require("electron");
+const { app, BrowserWindow, Notification, ipcMain, powerMonitor, screen, shell } = require("electron");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
@@ -39,9 +39,12 @@ function loadConfig() {
 
 const config = loadConfig();
 
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
 let mainWindow;
 let currentView = "idle";
 let hasManualPosition = false;
+let todoTimerId = null;
 const chatHistory = [];
 
 function getSettingsPath() {
@@ -82,8 +85,109 @@ function saveSettingsToDisk(patch) {
   return next;
 }
 
+function getTodosPath() {
+  return path.join(app.getPath("userData"), "todos.json");
+}
+
+function loadTodos() {
+  try {
+    const raw = fs.readFileSync(getTodosPath(), "utf8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (todo) =>
+          todo &&
+          typeof todo.id === "string" &&
+          typeof todo.title === "string" &&
+          Number.isFinite(todo.dueAt)
+      )
+      .map((todo) => ({
+        id: todo.id,
+        title: todo.title,
+        dueAt: Number(todo.dueAt),
+        createdAt: Number.isFinite(todo.createdAt) ? Number(todo.createdAt) : Date.now(),
+        notified: Boolean(todo.notified)
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function saveTodosToDisk(todos) {
+  const filepath = getTodosPath();
+  fs.mkdirSync(path.dirname(filepath), { recursive: true });
+  fs.writeFileSync(filepath, JSON.stringify(todos, null, 2), "utf8");
+}
+
+function broadcastTodosChanged(todos) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send("todos:changed", todos);
+}
+
+function showTodoNotification(todo) {
+  if (!Notification.isSupported()) return;
+  const notif = new Notification({
+    title: "도리 알림",
+    body: todo.title,
+    silent: false
+  });
+  notif.on("click", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send("todos:focus", { id: todo.id });
+  });
+  notif.show();
+}
+
+function fireDueTodos() {
+  todoTimerId = null;
+  const todos = loadTodos();
+  const now = Date.now();
+  const fired = [];
+
+  for (const todo of todos) {
+    if (!todo.notified && todo.dueAt <= now) {
+      showTodoNotification(todo);
+      todo.notified = true;
+      fired.push({ ...todo });
+    }
+  }
+
+  if (fired.length) {
+    saveTodosToDisk(todos);
+    broadcastTodosChanged(todos);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("todos:alert", fired);
+    }
+  }
+
+  scheduleNextTodo();
+}
+
+function scheduleNextTodo() {
+  if (todoTimerId) {
+    clearTimeout(todoTimerId);
+    todoTimerId = null;
+  }
+
+  const upcoming = loadTodos()
+    .filter((todo) => !todo.notified)
+    .sort((a, b) => a.dueAt - b.dueAt)[0];
+
+  if (!upcoming) return;
+
+  const delay = Math.max(0, upcoming.dueAt - Date.now());
+  if (delay <= MAX_TIMEOUT_MS) {
+    todoTimerId = setTimeout(fireDueTodos, delay);
+  } else {
+    todoTimerId = setTimeout(scheduleNextTodo, MAX_TIMEOUT_MS);
+  }
+}
+
 function getWindowSize(view = currentView) {
-  if (view === "chat" || view === "settings") {
+  if (view === "chat" || view === "settings" || view === "todos") {
     return { width: EXPANDED_WIDTH, height: EXPANDED_HEIGHT };
   }
   if (view === "menu") return { width: MENU_WIDTH, height: MENU_HEIGHT };
@@ -170,6 +274,8 @@ app.whenReady().then(() => {
   }
 
   createWindow();
+  scheduleNextTodo();
+  powerMonitor.on("resume", fireDueTodos);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -205,7 +311,7 @@ ipcMain.on("window:set-expanded", (_event, expanded) => {
 
 ipcMain.on("window:set-view", (_event, view) => {
   if (!mainWindow) return;
-  const nextView = ["idle", "menu", "chat", "settings"].includes(view) ? view : "idle";
+  const nextView = ["idle", "menu", "chat", "settings", "todos"].includes(view) ? view : "idle";
   setViewBounds(nextView, true);
 });
 
@@ -217,6 +323,37 @@ ipcMain.on("shell:open-external", (_event, url) => {
   if (typeof url !== "string") return;
   if (!/^https:\/\//i.test(url)) return;
   shell.openExternal(url);
+});
+
+ipcMain.handle("todos:list", () => loadTodos());
+
+ipcMain.handle("todos:add", (_event, payload) => {
+  const title = String(payload?.title || "").trim().slice(0, 200);
+  const dueAt = Number(payload?.dueAt);
+
+  if (!title) throw new Error("제목을 입력해주세요.");
+  if (!Number.isFinite(dueAt)) throw new Error("시간이 올바르지 않아요.");
+
+  const todos = loadTodos();
+  const id = `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  todos.push({ id, title, dueAt, createdAt: Date.now(), notified: false });
+  saveTodosToDisk(todos);
+  scheduleNextTodo();
+  return todos;
+});
+
+ipcMain.handle("todos:remove", (_event, id) => {
+  const next = loadTodos().filter((todo) => todo.id !== String(id || ""));
+  saveTodosToDisk(next);
+  scheduleNextTodo();
+  return next;
+});
+
+ipcMain.handle("todos:clear-notified", () => {
+  const next = loadTodos().filter((todo) => !todo.notified);
+  saveTodosToDisk(next);
+  scheduleNextTodo();
+  return next;
 });
 
 function buildGeminiContents(prompt) {

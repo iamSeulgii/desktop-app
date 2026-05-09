@@ -17,6 +17,7 @@
         <button class="icon-button drag-handle" type="button" title="창 이동">↕</button>
         <button class="icon-button" id="minimizeButton" type="button" title="최소화">−</button>
         <button class="icon-button" id="pinButton" type="button" title="하단으로 정렬">⌄</button>
+        <button class="icon-button" id="todosButton" type="button" title="할 일">📋</button>
         <button class="icon-button" id="settingsButton" type="button" title="설정">⚙</button>
       </div>
 
@@ -60,6 +61,45 @@
           </div>
           <p class="settings-status" id="settingsStatus" aria-live="polite"></p>
         </form>
+        <section class="todos-panel" id="todosPanel" aria-label="할 일">
+          <header class="todos-header">
+            <h3 class="todos-title">할 일</h3>
+            <button type="button" class="link-button" id="todosClearNotified">알림 보낸 거 지우기</button>
+          </header>
+          <form class="todo-add-form" id="todoAddForm" novalidate>
+            <input
+              id="todoTitleInput"
+              type="text"
+              placeholder="할 일 제목"
+              maxlength="200"
+              autocomplete="off"
+            />
+            <div class="todo-time-row">
+              <input id="todoTimeInput" type="datetime-local" step="60" />
+              <div class="todo-quick-buttons" role="group" aria-label="빠른 시간">
+                <button type="button" data-quick="15">+15분</button>
+                <button type="button" data-quick="30">+30분</button>
+                <button type="button" data-quick="60">+1시간</button>
+                <button type="button" data-quick="120">+2시간</button>
+              </div>
+            </div>
+            <button type="submit" class="todo-add-button">추가</button>
+          </form>
+          <ul class="todo-list" id="todoList" aria-live="polite"></ul>
+          <p class="todos-status" id="todosStatus" aria-live="polite"></p>
+        </section>
+        <div class="dori-toast" id="doriToast" role="status" aria-live="assertive">
+          <div class="dori-toast-head">
+            <span class="dori-toast-icon" aria-hidden="true">🔔</span>
+            <span class="dori-toast-title" id="doriToastTitle"></span>
+          </div>
+          <span class="dori-toast-time" id="doriToastTime"></span>
+          <span class="dori-toast-extra" id="doriToastExtra"></span>
+          <div class="dori-toast-actions">
+            <button type="button" class="dori-toast-view" id="doriToastView">할 일 보기</button>
+            <button type="button" class="dori-toast-close" id="doriToastClose">닫기</button>
+          </div>
+        </div>
       </div>
     </section>
 
