@@ -209,7 +209,8 @@ input {
 }
 
 .chat .floating-ui,
-.settings .floating-ui {
+.settings .floating-ui,
+.todos .floating-ui {
   left: 0;
   top: 12px;
   width: 100%;
@@ -217,18 +218,21 @@ input {
 }
 
 .chat .top-row,
-.settings .top-row {
+.settings .top-row,
+.todos .top-row {
   left: 170px;
   top: 30px;
   width: 340px;
 }
 
 .chat .mode-actions,
-.settings .mode-actions {
+.settings .mode-actions,
+.todos .mode-actions {
   display: none;
 }
 
-.dori-shell.settings {
+.dori-shell.settings,
+.dori-shell.todos {
   width: 700px;
   height: 360px;
 }
@@ -272,14 +276,16 @@ input {
 }
 
 .chat .head-close,
-.settings .head-close {
+.settings .head-close,
+.todos .head-close {
   top: 170px;
   left: 160px;
   right: auto;
 }
 
 .chat .dori-stage,
-.settings .dori-stage {
+.settings .dori-stage,
+.todos .dori-stage {
   left: 125px;
 }
 
@@ -484,6 +490,337 @@ input {
 
 .settings-status.error {
   color: #a23f3f;
+}
+
+.todos .speech-bubble {
+  position: absolute;
+  left: 170px;
+  top: 58px;
+  min-height: 205px;
+  max-height: 278px;
+  width: 340px;
+  padding: 12px 14px;
+  border-radius: 18px 18px 18px 7px;
+  display: block;
+  overflow-y: auto;
+}
+
+.todos .speech-bubble::before {
+  left: -9px;
+  bottom: 24px;
+  transform: rotate(45deg);
+}
+
+.todos .chat-log,
+.todos .ask-form {
+  display: none;
+}
+
+.todos-panel {
+  display: none;
+}
+
+.todos .todos-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.todos-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.todos-title {
+  margin: 0;
+  color: #70479f;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.todo-add-form {
+  display: grid;
+  gap: 6px;
+}
+
+.todo-add-form input[type="text"],
+.todo-add-form input[type="datetime-local"] {
+  height: 30px;
+  padding: 0 10px;
+  border: 2px solid rgba(148, 112, 232, 0.18);
+  border-radius: 12px;
+  outline: 0;
+  background: var(--panel-strong);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.todo-add-form input:focus {
+  border-color: rgba(255, 122, 184, 0.68);
+  box-shadow: 0 0 0 3px rgba(255, 122, 184, 0.16);
+}
+
+.todo-time-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.todo-quick-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.todo-quick-buttons button {
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(148, 112, 232, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #70479f;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.todo-quick-buttons button:hover {
+  background: rgba(247, 235, 255, 0.95);
+}
+
+.todo-add-button {
+  height: 32px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8fc5, #ff6bab);
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 3px 0 rgba(169, 76, 143, 0.25);
+  cursor: pointer;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  max-height: 88px;
+  overflow-y: auto;
+}
+
+.todo-empty {
+  padding: 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.todo-item {
+  display: grid;
+  grid-template-columns: 1fr 22px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(148, 112, 232, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.todo-item.notified {
+  background: rgba(247, 235, 255, 0.6);
+  opacity: 0.78;
+}
+
+.todo-item.highlight {
+  border-color: rgba(255, 122, 184, 0.68);
+  box-shadow: 0 0 0 2px rgba(255, 122, 184, 0.18);
+}
+
+.todo-main {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.todo-title {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-meta {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.todo-remove {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 245, 250, 0.9);
+  color: #a23f3f;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.todo-remove:hover {
+  background: rgba(255, 220, 232, 0.95);
+}
+
+.todos-status {
+  min-height: 14px;
+  margin: 0;
+  color: #2f8b6f;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.todos-status.error {
+  color: #a23f3f;
+}
+
+.dori-toast {
+  display: none;
+}
+
+.alerting .speech-bubble {
+  position: absolute;
+  left: 220px;
+  top: 68px;
+  width: 250px;
+  min-height: 124px;
+  max-height: 180px;
+  padding: 12px 14px;
+  border-radius: 18px 18px 18px 7px;
+  display: block;
+  overflow: hidden;
+  border-color: rgba(255, 122, 184, 0.55);
+  background:
+    radial-gradient(circle at 18px 14px, rgba(255, 230, 109, 0.55) 0 4px, transparent 5px),
+    radial-gradient(circle at 92% 18%, rgba(111, 224, 196, 0.4) 0 5px, transparent 6px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 235, 246, 0.98));
+  animation: toast-pop 220ms ease-out;
+}
+
+.alerting .speech-bubble::before {
+  left: -9px;
+  bottom: 24px;
+  transform: rotate(45deg);
+  border-color: rgba(255, 122, 184, 0.55);
+}
+
+.alerting .chat-log,
+.alerting .ask-form,
+.alerting .settings-panel,
+.alerting .todos-panel,
+.alerting .mode-actions {
+  display: none !important;
+}
+
+.alerting .dori-toast {
+  display: grid;
+  gap: 5px;
+  -webkit-app-region: no-drag;
+}
+
+.dori-toast-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dori-toast-icon {
+  font-size: 16px;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.7));
+  animation: bell-shake 0.7s ease-in-out 2;
+}
+
+.dori-toast-title {
+  flex: 1;
+  min-width: 0;
+  color: #46356f;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dori-toast-time {
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.dori-toast-extra {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dori-toast-extra.hidden {
+  display: none;
+}
+
+.dori-toast-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.dori-toast-view {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8fc5, #ff6bab);
+  color: white;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(169, 76, 143, 0.25);
+}
+
+.dori-toast-close {
+  height: 28px;
+  padding: 0 10px;
+  border: 2px solid rgba(148, 112, 232, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #70479f;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@keyframes toast-pop {
+  0% { transform: scale(0.92); opacity: 0; }
+  60% { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes bell-shake {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-12deg); }
+  40% { transform: rotate(10deg); }
+  60% { transform: rotate(-6deg); }
+  80% { transform: rotate(4deg); }
 }
 
 .menu .speech-bubble {

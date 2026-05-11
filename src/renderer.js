@@ -10,6 +10,20 @@ const modeButtons = [...document.querySelectorAll(".mode-actions button")];
 const minimizeButton = document.querySelector("#minimizeButton");
 const closeButton = document.querySelector("#closeButton");
 const pinButton = document.querySelector("#pinButton");
+const doriToast = document.querySelector("#doriToast");
+const doriToastTitle = document.querySelector("#doriToastTitle");
+const doriToastTime = document.querySelector("#doriToastTime");
+const doriToastExtra = document.querySelector("#doriToastExtra");
+const doriToastView = document.querySelector("#doriToastView");
+const doriToastClose = document.querySelector("#doriToastClose");
+const todosButton = document.querySelector("#todosButton");
+const todoAddForm = document.querySelector("#todoAddForm");
+const todoTitleInput = document.querySelector("#todoTitleInput");
+const todoTimeInput = document.querySelector("#todoTimeInput");
+const todoList = document.querySelector("#todoList");
+const todosStatus = document.querySelector("#todosStatus");
+const todosClearNotifiedButton = document.querySelector("#todosClearNotified");
+const todoQuickButtons = [...document.querySelectorAll(".todo-quick-buttons button")];
 const settingsButton = document.querySelector("#settingsButton");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsApiKeyInput = document.querySelector("#settingsApiKey");
@@ -24,6 +38,13 @@ const doriImage = document.querySelector("#doriImage");
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 let cachedSettings = { geminiApiKey: "", geminiModel: DEFAULT_GEMINI_MODEL };
 let settingsStatusTimer = null;
+let cachedTodos = [];
+let todosStatusTimer = null;
+const toastQueue = [];
+let activeToast = null;
+let toastDismissTimer = null;
+let preToastView = null;
+const TOAST_DURATION_MS = 12000;
 
 let view = "idle";
 let activeMode = null;
@@ -46,11 +67,12 @@ const modeImages = {
 };
 
 function setView(nextView, focusInput = false) {
-  view = ["idle", "menu", "chat", "settings"].includes(nextView) ? nextView : "idle";
+  view = ["idle", "menu", "chat", "settings", "todos"].includes(nextView) ? nextView : "idle";
   doriShell.classList.toggle("idle", view === "idle");
   doriShell.classList.toggle("menu", view === "menu");
   doriShell.classList.toggle("chat", view === "chat");
   doriShell.classList.toggle("settings", view === "settings");
+  doriShell.classList.toggle("todos", view === "todos");
   window.desktopTimer.setView(view);
 
   if (view === "chat" && focusInput) {
@@ -346,6 +368,253 @@ apiKeyLinkButton.addEventListener("click", () => {
   window.desktopTimer.openExternal("https://aistudio.google.com/app/apikey");
 });
 
+function localDatetimeValue(date) {
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+}
+
+function formatDueAt(dueAt) {
+  const d = new Date(dueAt);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${month}/${day} ${hh}:${mm}`;
+}
+
+function formatRelative(dueAt) {
+  const diff = dueAt - Date.now();
+  const abs = Math.abs(diff);
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  let label;
+  if (abs < minute) label = "방금";
+  else if (abs < hour) label = `${Math.floor(abs / minute)}분`;
+  else if (abs < day) label = `${Math.floor(abs / hour)}시간`;
+  else label = `${Math.floor(abs / day)}일`;
+  if (label === "방금") return "곧";
+  return diff >= 0 ? `${label} 후` : `${label} 전`;
+}
+
+function showTodosStatus(text, isError = false) {
+  if (!todosStatus) return;
+  todosStatus.textContent = text;
+  todosStatus.classList.toggle("error", Boolean(isError));
+  if (todosStatusTimer) clearTimeout(todosStatusTimer);
+  if (text) {
+    todosStatusTimer = setTimeout(() => {
+      todosStatus.textContent = "";
+      todosStatus.classList.remove("error");
+    }, 1800);
+  }
+}
+
+function renderTodos(highlightId) {
+  todoList.innerHTML = "";
+  const sorted = [...cachedTodos].sort((a, b) => a.dueAt - b.dueAt);
+
+  if (!sorted.length) {
+    const empty = document.createElement("li");
+    empty.className = "todo-empty";
+    empty.textContent = "등록된 할 일이 없어요.";
+    todoList.append(empty);
+    return;
+  }
+
+  for (const todo of sorted) {
+    const li = document.createElement("li");
+    li.className = "todo-item";
+    li.dataset.id = todo.id;
+    if (todo.notified) li.classList.add("notified");
+    if (highlightId && todo.id === highlightId) li.classList.add("highlight");
+
+    const main = document.createElement("div");
+    main.className = "todo-main";
+
+    const title = document.createElement("span");
+    title.className = "todo-title";
+    title.textContent = todo.title;
+    main.append(title);
+
+    const meta = document.createElement("span");
+    meta.className = "todo-meta";
+    const parts = [formatDueAt(todo.dueAt), formatRelative(todo.dueAt)];
+    if (todo.notified) parts.push("알림 보냄");
+    meta.textContent = parts.join(" · ");
+    main.append(meta);
+
+    li.append(main);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "todo-remove";
+    removeBtn.title = "삭제";
+    removeBtn.textContent = "×";
+    removeBtn.addEventListener("click", async () => {
+      try {
+        const next = await window.desktopTimer.removeTodo(todo.id);
+        cachedTodos = Array.isArray(next) ? next : [];
+        renderTodos();
+      } catch (error) {
+        showTodosStatus(error?.message || "삭제 실패", true);
+      }
+    });
+    li.append(removeBtn);
+
+    todoList.append(li);
+  }
+}
+
+async function refreshTodos() {
+  try {
+    const next = await window.desktopTimer.listTodos();
+    cachedTodos = Array.isArray(next) ? next : [];
+    renderTodos();
+  } catch (_error) {
+    /* keep cached */
+  }
+}
+
+function openTodos() {
+  todoTitleInput.value = "";
+  todoTimeInput.value = localDatetimeValue(new Date(Date.now() + 30 * 60 * 1000));
+  showTodosStatus("");
+  setView("todos", false);
+  refreshTodos();
+  requestAnimationFrame(() => todoTitleInput.focus());
+}
+
+todosButton.addEventListener("click", openTodos);
+
+todoAddForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const title = todoTitleInput.value.trim();
+  if (!title) {
+    showTodosStatus("제목을 입력해주세요.", true);
+    return;
+  }
+
+  const raw = todoTimeInput.value;
+  const dueAt = raw ? new Date(raw).getTime() : NaN;
+  if (!Number.isFinite(dueAt)) {
+    showTodosStatus("시간이 올바르지 않아요.", true);
+    return;
+  }
+
+  try {
+    const next = await window.desktopTimer.addTodo({ title, dueAt });
+    cachedTodos = Array.isArray(next) ? next : cachedTodos;
+    todoTitleInput.value = "";
+    todoTimeInput.value = localDatetimeValue(new Date(Date.now() + 30 * 60 * 1000));
+    renderTodos();
+    showTodosStatus("등록됐어요!");
+    todoTitleInput.focus();
+  } catch (error) {
+    showTodosStatus(error?.message || "등록 실패", true);
+  }
+});
+
+todoQuickButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const minutes = Number(button.dataset.quick) || 0;
+    todoTimeInput.value = localDatetimeValue(new Date(Date.now() + minutes * 60_000));
+  });
+});
+
+todosClearNotifiedButton.addEventListener("click", async () => {
+  try {
+    const next = await window.desktopTimer.clearNotifiedTodos();
+    cachedTodos = Array.isArray(next) ? next : [];
+    renderTodos();
+    showTodosStatus("정리했어요!");
+  } catch (error) {
+    showTodosStatus(error?.message || "정리 실패", true);
+  }
+});
+
+window.desktopTimer.onTodosChanged((next) => {
+  cachedTodos = Array.isArray(next) ? next : [];
+  if (view === "todos") renderTodos();
+});
+
+window.desktopTimer.onTodosFocus(({ id } = {}) => {
+  openTodos();
+  if (id) {
+    requestAnimationFrame(() => {
+      const node = todoList.querySelector(`[data-id="${id}"]`);
+      if (node) {
+        node.classList.add("highlight");
+        node.scrollIntoView({ block: "nearest" });
+      }
+    });
+  }
+});
+
+function showNextToast() {
+  if (activeToast) return;
+  const next = toastQueue.shift();
+  if (!next) {
+    finishToastSession();
+    return;
+  }
+
+  activeToast = next;
+  doriToastTitle.textContent = next.title || "할 일";
+  doriToastTime.textContent = `${formatDueAt(next.dueAt)} · ${formatRelative(next.dueAt)}`;
+  const remaining = toastQueue.length;
+  doriToastExtra.textContent = remaining ? `대기 중인 알림 ${remaining}개` : "";
+  doriToastExtra.classList.toggle("hidden", remaining === 0);
+
+  if (preToastView === null) preToastView = view === "settings" || view === "todos" ? view : "idle";
+  doriShell.classList.add("alerting");
+  if (view === "idle" || view === "chat") setView("menu", false);
+
+  if (toastDismissTimer) clearTimeout(toastDismissTimer);
+  toastDismissTimer = setTimeout(dismissToast, TOAST_DURATION_MS);
+}
+
+function dismissToast() {
+  if (toastDismissTimer) {
+    clearTimeout(toastDismissTimer);
+    toastDismissTimer = null;
+  }
+  activeToast = null;
+  if (toastQueue.length) {
+    showNextToast();
+    return;
+  }
+  finishToastSession();
+}
+
+function finishToastSession() {
+  doriShell.classList.remove("alerting");
+  if (preToastView && preToastView !== view) {
+    setView(preToastView, false);
+  }
+  preToastView = null;
+}
+
+function enqueueToasts(todos) {
+  if (!Array.isArray(todos) || !todos.length) return;
+  for (const todo of todos) {
+    if (todo && typeof todo.title === "string") toastQueue.push(todo);
+  }
+  showNextToast();
+}
+
+doriToastClose.addEventListener("click", dismissToast);
+doriToastView.addEventListener("click", () => {
+  preToastView = "todos";
+  dismissToast();
+});
+
+window.desktopTimer.onTodosAlert((todos) => {
+  enqueueToasts(todos);
+});
+
 renderDefaultLabel();
 setView("idle", false);
 refreshSettings();
+refreshTodos();
