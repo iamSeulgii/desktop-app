@@ -60,9 +60,13 @@ function loadSettings() {
       typeof parsed.geminiModel === "string" && ALLOWED_MODELS.has(parsed.geminiModel)
         ? parsed.geminiModel
         : DEFAULT_GEMINI_MODEL;
-    return { geminiApiKey: apiKey, geminiModel: model };
+    return {
+      geminiApiKey: apiKey,
+      geminiModel: model,
+      experimentalLab: Boolean(parsed.experimentalLab)
+    };
   } catch {
-    return { geminiApiKey: "", geminiModel: DEFAULT_GEMINI_MODEL };
+    return { geminiApiKey: "", geminiModel: DEFAULT_GEMINI_MODEL, experimentalLab: false };
   }
 }
 
@@ -76,6 +80,9 @@ function saveSettingsToDisk(patch) {
     }
     if (typeof patch.geminiModel === "string" && ALLOWED_MODELS.has(patch.geminiModel)) {
       next.geminiModel = patch.geminiModel;
+    }
+    if (typeof patch.experimentalLab === "boolean") {
+      next.experimentalLab = patch.experimentalLab;
     }
   }
 

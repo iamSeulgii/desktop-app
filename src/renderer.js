@@ -28,6 +28,7 @@ const settingsButton = document.querySelector("#settingsButton");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsApiKeyInput = document.querySelector("#settingsApiKey");
 const settingsModelSelect = document.querySelector("#settingsModel");
+const settingsExperimentalLabInput = document.querySelector("#settingsExperimentalLab");
 const settingsCancelButton = document.querySelector("#settingsCancel");
 const settingsStatus = document.querySelector("#settingsStatus");
 const apiKeyLinkButton = document.querySelector("#apiKeyLink");
@@ -36,7 +37,11 @@ const mascot = document.querySelector(".mascot");
 const doriImage = document.querySelector("#doriImage");
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
-let cachedSettings = { geminiApiKey: "", geminiModel: DEFAULT_GEMINI_MODEL };
+let cachedSettings = {
+  geminiApiKey: "",
+  geminiModel: DEFAULT_GEMINI_MODEL,
+  experimentalLab: false
+};
 let settingsStatusTimer = null;
 let cachedTodos = [];
 let todosStatusTimer = null;
@@ -56,14 +61,16 @@ const modeLabels = {
   coding: "코딩 중...",
   break: "쉬는 중...",
   lunch: "밥먹는 중...",
-  work: "일하는 중..."
+  work: "일하는 중...",
+  hion: "하이온 중..."
 };
 
 const modeImages = {
   coding: "./assets/dog-coder.png",
   break: "./assets/dog-break.png",
   lunch: "./assets/dog-lunch.png",
-  work: "./assets/dog-work.png"
+  work: "./assets/dog-work.png",
+  hion: "./assets/dog-hion.png"
 };
 
 function setView(nextView, focusInput = false) {
@@ -88,6 +95,30 @@ function resetCompactBubble() {
 
 function renderDefaultLabel() {
   if (!activeMode) stageLabel.textContent = "도리";
+}
+
+function clearDoriMode() {
+  activeMode = null;
+  modeStartedAt = null;
+  timerLabel.textContent = "";
+  doriImage.src = modeImages.coding;
+  delete doriShell.dataset.mode;
+  delete mascot.dataset.mode;
+  modeButtons.forEach((button) => button.classList.remove("active"));
+  clearInterval(modeTimerId);
+  renderDefaultLabel();
+}
+
+function setExperimentalLabEnabled(enabled) {
+  modeButtons.forEach((button) => {
+    if (button.dataset.mode !== "hion") return;
+    button.hidden = !enabled;
+    button.setAttribute("aria-hidden", enabled ? "false" : "true");
+  });
+
+  if (!enabled && activeMode === "hion") {
+    clearDoriMode();
+  }
 }
 
 function formatElapsed(ms) {
@@ -313,8 +344,10 @@ async function refreshSettings() {
         geminiModel:
           typeof next.geminiModel === "string" && next.geminiModel
             ? next.geminiModel
-            : DEFAULT_GEMINI_MODEL
+            : DEFAULT_GEMINI_MODEL,
+        experimentalLab: Boolean(next.experimentalLab)
       };
+      setExperimentalLabEnabled(cachedSettings.experimentalLab);
     }
   } catch (_error) {
     /* keep defaults */
@@ -324,6 +357,7 @@ async function refreshSettings() {
 function openSettings() {
   settingsApiKeyInput.value = cachedSettings.geminiApiKey || "";
   settingsModelSelect.value = cachedSettings.geminiModel || DEFAULT_GEMINI_MODEL;
+  settingsExperimentalLabInput.checked = Boolean(cachedSettings.experimentalLab);
   if (![...settingsModelSelect.options].some((opt) => opt.value === settingsModelSelect.value)) {
     settingsModelSelect.value = DEFAULT_GEMINI_MODEL;
   }
@@ -345,7 +379,8 @@ settingsForm.addEventListener("submit", async (event) => {
 
   const payload = {
     geminiApiKey: settingsApiKeyInput.value.trim(),
-    geminiModel: settingsModelSelect.value || DEFAULT_GEMINI_MODEL
+    geminiModel: settingsModelSelect.value || DEFAULT_GEMINI_MODEL,
+    experimentalLab: settingsExperimentalLabInput.checked
   };
 
   try {
@@ -356,8 +391,10 @@ settingsForm.addEventListener("submit", async (event) => {
       geminiModel:
         saved && typeof saved.geminiModel === "string" && saved.geminiModel
           ? saved.geminiModel
-          : payload.geminiModel
+          : payload.geminiModel,
+      experimentalLab: Boolean(saved?.experimentalLab)
     };
+    setExperimentalLabEnabled(cachedSettings.experimentalLab);
     showSettingsStatus("저장됐어요!");
   } catch (error) {
     showSettingsStatus(error?.message || "저장에 실패했어요.", true);
@@ -615,6 +652,7 @@ window.desktopTimer.onTodosAlert((todos) => {
 });
 
 renderDefaultLabel();
+setExperimentalLabEnabled(cachedSettings.experimentalLab);
 setView("idle", false);
 refreshSettings();
 refreshTodos();

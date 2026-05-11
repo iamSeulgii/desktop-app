@@ -1,123 +1,60 @@
 <!doctype html>
 <html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dori Desktop Chat</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="dori-shell idle" id="doriShell" aria-label="도리 데스크탑 챗">
+      <button class="head-close" id="closeButton" type="button" title="닫기">×</button>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dori Desktop Chat</title>
-  <link rel="stylesheet" href="./styles.css" />
-</head>
-
-<body>
-  <main class="dori-shell idle" id="doriShell" aria-label="도리 데스크탑 챗">
-    <button class="head-close" id="closeButton" type="button" title="닫기">×</button>
-
-    <section class="floating-ui" aria-label="도리 메뉴">
-      <div class="top-row">
-        <button class="icon-button drag-handle" type="button" title="창 이동">↕</button>
-        <button class="icon-button" id="minimizeButton" type="button" title="최소화">−</button>
-        <button class="icon-button" id="pinButton" type="button" title="하단으로 정렬">⌄</button>
-        <button class="icon-button" id="todosButton" type="button" title="할 일">📋</button>
-        <button class="icon-button" id="settingsButton" type="button" title="설정">⚙</button>
-      </div>
-
-      <div class="mode-actions" aria-label="도리 상태">
-        <button type="button" data-mode="coding">코딩하기</button>
-        <button type="button" data-mode="break">쉬는시간</button>
-        <button type="button" data-mode="lunch">점심시간</button>
-        <button type="button" data-mode="work">일하기</button>
-      </div>
-
-      <div class="speech-bubble" id="speechBubble">
-        <div class="chat-log" id="chatLog" aria-live="polite">
-          <div class="message assistant">도리에게 물어보세요</div>
+      <section class="floating-ui" aria-label="도리 메뉴">
+        <div class="top-row">
+          <button class="icon-button drag-handle" type="button" title="창 이동">↕</button>
+          <button class="icon-button" id="minimizeButton" type="button" title="최소화">−</button>
+          <button class="icon-button" id="pinButton" type="button" title="하단으로 정렬">⌄</button>
         </div>
-        <form class="ask-form" id="askForm">
-          <input id="askInput" type="text" autocomplete="off" placeholder="질문을 입력하고 Enter" aria-label="도리에게 질문" />
-          <button id="askButton" type="submit">전송</button>
-        </form>
-        <form class="settings-panel" id="settingsForm" novalidate>
-          <h3 class="settings-title">Gemini 설정</h3>
-          <label class="settings-field">
-            <span>API Key</span>
-            <input id="settingsApiKey" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false" />
-          </label>
-          <label class="settings-field">
-            <span>모델</span>
-            <select id="settingsModel">
-              <option value="gemini-2.5-flash">gemini-2.5-flash · 균형 (기본)</option>
-              <option value="gemini-2.5-pro">gemini-2.5-pro · 가장 똑똑함</option>
-              <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite · 빠르고 저렴</option>
-              <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite · 최신</option>
-            </select>
-          </label>
-          <p class="settings-hint">
-            키는 이 컴퓨터에만 저장돼요.
-            <button type="button" class="link-button" id="apiKeyLink">키 발급 받기 →</button>
-          </p>
-          <div class="settings-actions">
-            <button type="button" class="settings-cancel" id="settingsCancel">취소</button>
-            <button type="submit" class="settings-save">저장</button>
+
+        <div class="mode-actions" aria-label="도리 상태">
+          <button type="button" data-mode="coding">코딩하기</button>
+          <button type="button" data-mode="break">쉬는시간</button>
+          <button type="button" data-mode="lunch">점심시간</button>
+          <button type="button" data-mode="work">일하기</button>
+        </div>
+
+        <div class="speech-bubble" id="speechBubble">
+          <div class="chat-log" id="chatLog" aria-live="polite">
+            <div class="message assistant">도리에게 물어보세요</div>
           </div>
-          <p class="settings-status" id="settingsStatus" aria-live="polite"></p>
-        </form>
-        <section class="todos-panel" id="todosPanel" aria-label="할 일">
-          <header class="todos-header">
-            <h3 class="todos-title">할 일</h3>
-            <button type="button" class="link-button" id="todosClearNotified">알림 보낸 거 지우기</button>
-          </header>
-          <form class="todo-add-form" id="todoAddForm" novalidate>
+          <form class="ask-form" id="askForm">
             <input
-              id="todoTitleInput"
+              id="askInput"
               type="text"
-              placeholder="할 일 제목"
-              maxlength="200"
               autocomplete="off"
+              placeholder="질문을 입력하고 Enter"
+              aria-label="도리에게 질문"
             />
-            <div class="todo-time-row">
-              <input id="todoTimeInput" type="datetime-local" step="60" />
-              <div class="todo-quick-buttons" role="group" aria-label="빠른 시간">
-                <button type="button" data-quick="15">+15분</button>
-                <button type="button" data-quick="30">+30분</button>
-                <button type="button" data-quick="60">+1시간</button>
-                <button type="button" data-quick="120">+2시간</button>
-              </div>
-            </div>
-            <button type="submit" class="todo-add-button">추가</button>
+            <button id="askButton" type="submit">전송</button>
           </form>
-          <ul class="todo-list" id="todoList" aria-live="polite"></ul>
-          <p class="todos-status" id="todosStatus" aria-live="polite"></p>
-        </section>
-        <div class="dori-toast" id="doriToast" role="status" aria-live="assertive">
-          <div class="dori-toast-head">
-            <span class="dori-toast-icon" aria-hidden="true">🔔</span>
-            <span class="dori-toast-title" id="doriToastTitle"></span>
-          </div>
-          <span class="dori-toast-time" id="doriToastTime"></span>
-          <span class="dori-toast-extra" id="doriToastExtra"></span>
-          <div class="dori-toast-actions">
-            <button type="button" class="dori-toast-view" id="doriToastView">할 일 보기</button>
-            <button type="button" class="dori-toast-close" id="doriToastClose">닫기</button>
-          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="dori-stage" aria-label="도리">
-      <div class="shadow"></div>
-      <div class="timer-label" id="timerLabel" aria-live="polite"></div>
-      <button class="mascot working" id="mascotButton" type="button" title="도리 열기">
-        <img id="doriImage" src="./assets/dog-coder.png" alt="노트북으로 코딩하는 도리" />
-        <span class="typing-dot dot-one"></span>
-        <span class="typing-dot dot-two"></span>
-        <span class="typing-dot dot-three"></span>
-      </button>
-      <div class="stage-label" id="stageLabel">도리</div>
-    </section>
+      <section class="dori-stage" aria-label="도리">
+        <div class="shadow"></div>
+        <div class="timer-label" id="timerLabel" aria-live="polite"></div>
+        <button class="mascot working" id="mascotButton" type="button" title="도리 열기">
+          <img id="doriImage" src="./assets/dog-coder.png" alt="노트북으로 코딩하는 도리" />
+          <span class="typing-dot dot-one"></span>
+          <span class="typing-dot dot-two"></span>
+          <span class="typing-dot dot-three"></span>
+        </button>
+        <div class="stage-label" id="stageLabel">도리</div>
+      </section>
 
-  </main>
+    </main>
 
-  <script src="./renderer.js"></script>
-</body>
-
+    <script src="./renderer.js"></script>
+  </body>
 </html>

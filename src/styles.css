@@ -432,6 +432,23 @@ input {
   box-shadow: 0 0 0 3px rgba(255, 122, 184, 0.16);
 }
 
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 24px;
+  color: #6f5b8e;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.settings-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .settings-hint {
   margin: 2px 0 0;
   color: var(--muted);
@@ -868,6 +885,11 @@ input {
   -webkit-app-region: no-drag;
 }
 
+.mode-actions:has(.experimental-mode:not([hidden])) {
+  width: 500px;
+  grid-template-columns: repeat(6, 1fr);
+}
+
 .mode-actions button {
   min-width: 0;
   height: 31px;
@@ -913,6 +935,22 @@ input {
   transform: rotate(1deg);
 }
 
+.mode-actions button:nth-child(5) {
+  background:
+    repeating-linear-gradient(-12deg, rgba(122, 220, 255, 0.15) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #ffffff, #e7f8ff);
+  font-size: 10px;
+  transform: rotate(-1.1deg);
+}
+
+.mode-actions button:nth-child(6) {
+  background:
+    repeating-linear-gradient(-12deg, rgba(255, 111, 176, 0.12) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #ffffff, #fff0f7);
+  font-size: 10px;
+  transform: rotate(1.15deg);
+}
+
 .mode-actions button.active:nth-child(2) {
   background:
     repeating-linear-gradient(-12deg, rgba(111, 224, 196, 0.22) 0 3px, transparent 3px 7px),
@@ -929,6 +967,18 @@ input {
   background:
     repeating-linear-gradient(-12deg, rgba(255, 176, 132, 0.24) 0 3px, transparent 3px 7px),
     linear-gradient(180deg, #ffe0ca, #ffc8a6);
+}
+
+.mode-actions button.active:nth-child(5) {
+  background:
+    repeating-linear-gradient(-12deg, rgba(122, 220, 255, 0.26) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #cbf1ff, #aee7ff);
+}
+
+.mode-actions button.active:nth-child(6) {
+  background:
+    repeating-linear-gradient(-12deg, rgba(255, 111, 176, 0.24) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, #ffd8ea, #ffb9dc);
 }
 
 .mode-actions button:hover {
@@ -1135,6 +1185,14 @@ button:active {
 
 .mascot[data-mode="work"] {
   animation: focused-nod 1.35s ease-in-out infinite;
+}
+
+.mascot[data-mode="hion"] {
+  animation: focused-nod 0.9s ease-in-out infinite;
+}
+
+.mascot[data-mode="hwakangs"] {
+  animation: cozy-sway 1.8s ease-in-out infinite;
 }
 
 .dori-shell[data-mode="break"] .typing-dot {
