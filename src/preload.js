@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld("desktopTimer", {
   setExpanded: (expanded) => ipcRenderer.send("window:set-expanded", expanded),
   setView: (view) => ipcRenderer.send("window:set-view", view),
   ask: (prompt, requestId) => ipcRenderer.invoke("chat:ask", { prompt, requestId }),
+  getSettings: () => ipcRenderer.invoke("settings:get"),
+  saveSettings: (next) => ipcRenderer.invoke("settings:save", next),
+  openExternal: (url) => ipcRenderer.send("shell:open-external", url),
   onChatChunk: (callback) => {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on("chat:chunk", listener);

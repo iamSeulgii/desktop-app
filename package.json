@@ -15,6 +15,12 @@
     "electron": "^21.2.1",
     "electron-builder": "^24.13.3"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "electron-builder"
+    ]
+  },
   "build": {
     "appId": "com.desktop.app",
     "productName": "Desktop App",
