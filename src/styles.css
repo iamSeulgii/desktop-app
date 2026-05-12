@@ -877,7 +877,7 @@ input {
   position: absolute;
   left: 50%;
   top: 2px;
-  width: 420px;
+  width: 450px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
@@ -886,8 +886,8 @@ input {
 }
 
 .mode-actions:has(.experimental-mode:not([hidden])) {
-  width: 500px;
-  grid-template-columns: repeat(6, 1fr);
+  width: 462px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .mode-actions button {
@@ -975,11 +975,13 @@ input {
     linear-gradient(180deg, #cbf1ff, #aee7ff);
 }
 
+
 .mode-actions button.active:nth-child(6) {
   background:
     repeating-linear-gradient(-12deg, rgba(255, 111, 176, 0.24) 0 3px, transparent 3px 7px),
-    linear-gradient(180deg, #ffd8ea, #ffb9dc);
+    linear-gradient(180deg, #feeee5, #facb8d);
 }
+
 
 .mode-actions button:hover {
   box-shadow: 0 6px 0 rgba(160, 121, 255, 0.2), 0 15px 26px rgba(83, 51, 97, 0.18);
@@ -1185,14 +1187,6 @@ button:active {
 
 .mascot[data-mode="work"] {
   animation: focused-nod 1.35s ease-in-out infinite;
-}
-
-.mascot[data-mode="hion"] {
-  animation: focused-nod 0.9s ease-in-out infinite;
-}
-
-.mascot[data-mode="hwakangs"] {
-  animation: cozy-sway 1.8s ease-in-out infinite;
 }
 
 .dori-shell[data-mode="break"] .typing-dot {

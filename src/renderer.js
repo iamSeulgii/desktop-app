@@ -62,7 +62,8 @@ const modeLabels = {
   break: "쉬는 중...",
   lunch: "밥먹는 중...",
   work: "일하는 중...",
-  hion: "하이온 중..."
+  hion: "하이온 중...",
+  toilet: "화캉스 중..."
 };
 
 const modeImages = {
@@ -70,7 +71,8 @@ const modeImages = {
   break: "./assets/dog-break.png",
   lunch: "./assets/dog-lunch.png",
   work: "./assets/dog-work.png",
-  hion: "./assets/dog-hion.png"
+  hion: "./assets/dog-hion.png",
+  toilet: "./assets/dog-hwakangs.png"
 };
 
 function setView(nextView, focusInput = false) {
@@ -111,12 +113,12 @@ function clearDoriMode() {
 
 function setExperimentalLabEnabled(enabled) {
   modeButtons.forEach((button) => {
-    if (button.dataset.mode !== "hion") return;
+    if (button.dataset.mode !== "hion" && button.dataset.mode !== "toilet") return;
     button.hidden = !enabled;
     button.setAttribute("aria-hidden", enabled ? "false" : "true");
   });
 
-  if (!enabled && activeMode === "hion") {
+  if (!enabled && (activeMode === "hion"||activeMode == "toilet")) {
     clearDoriMode();
   }
 }
